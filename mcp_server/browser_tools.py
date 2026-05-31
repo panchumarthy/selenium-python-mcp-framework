@@ -95,7 +95,7 @@ def click_element(selector: str, by: str = "css", index: int = 0) -> dict:
         elements = wait.until(EC.presence_of_all_elements_located((by_strategy, selector)))
         target = elements[index]
         driver.execute_script("arguments[0].scrollIntoView(true);", target)
-        target.click()
+        driver.execute_script("arguments[0].click();", target)
         return {"status": "ok", "message": f"Clicked element [{index}] matching '{selector}'"}
     except TimeoutException:
         return {"status": "error", "message": f"Element not found: {selector}"}
@@ -115,9 +115,12 @@ def fill_input(selector: str, value: str, by: str = "css", clear_first: bool = T
     try:
         wait = WebDriverWait(driver, 10)
         element = wait.until(EC.presence_of_element_located((by_strategy, selector)))
-        if clear_first:
-            element.clear()
-        element.send_keys(value)
+        driver.execute_script("""
+            var s = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype,'value').set;
+            s.call(arguments[0], arguments[1]);
+            arguments[0].dispatchEvent(new Event('input', { bubbles: true }));
+            arguments[0].dispatchEvent(new Event('change', { bubbles: true }));
+        """, element, value)
         return {"status": "ok", "message": f"Filled '{selector}' with value"}
     except TimeoutException:
         return {"status": "error", "message": f"Input not found: {selector}"}
